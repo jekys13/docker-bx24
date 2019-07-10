@@ -8,7 +8,6 @@ services:
 
   bxcore:
     image: jekys/bx24-core:latest
-    user: ${USER}
     volumes:
       - ./app:/home/bitrix/www
     environment:
@@ -20,7 +19,8 @@ services:
       MYSQL_PASSWORD: ${DB_PASSWORD}
       SELECTEL_USER: ${SELECTEL_USER}  
       SELECTEL_PASSWORD: ${SELECTEL_PASSWORD}  
-      SELECTEL_CONTAINER: ${SELECTEL_CONTAINER}  
+      SELECTEL_CONTAINER: ${SELECTEL_CONTAINER} 
+      HOST_USER: ${HOST_USER}      
     depends_on:
       - db
 
@@ -49,7 +49,7 @@ services:
 
   php:
     image: "jekys/bx24-php-fpm:latest"
-    command: /bin/sh -c 'echo "${NETWORK_GATEWAY} ${HOSTNAME}" >> /etc/hosts; php-fpm'
+    command: /bin/sh -c 'echo "${NETWORK_GATEWAY} ${DOMAIN}" >> /etc/hosts; php-fpm'
     volumes:
       - sockets:/sockets
       - ./app:/home/bitrix/www
