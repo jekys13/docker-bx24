@@ -1,0 +1,87 @@
+version: '3'
+
+volumes:
+  db_data:
+  sockets:
+
+services:
+
+  bxcore:
+    image: jekys/bx24-core:latest
+    user: ${USER}
+    volumes:
+      - ./app:/home/bitrix/www
+    environment:
+      DOMAIN: ${DOMAIN}
+      PROJECT_NAME: ${PROJECT_NAME}
+      FRESH_INSTALL: ${FRESH_INSTALL}
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      SELECTEL_USER: ${SELECTEL_USER}  
+      SELECTEL_PASSWORD: ${SELECTEL_PASSWORD}  
+      SELECTEL_CONTAINER: ${SELECTEL_CONTAINER}  
+    depends_on:
+      - db
+
+  web:
+    image: "jekys/bx24-nginx:latest"
+    ports:
+      - 80:80
+    environment:
+      DOMAIN: ${DOMAIN}  
+    volumes:
+      - sockets:/sockets
+      - ./app:/home/bitrix/www
+    depends_on:
+      - php
+
+  db:
+    image: "jekys/bx24-percona:latest"
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql/
+
+  php:
+    image: "jekys/bx24-php-fpm:latest"
+    command: /bin/sh -c 'echo "${NETWORK_GATEWAY} ${HOSTNAME}" >> /etc/hosts; php-fpm'
+    volumes:
+      - sockets:/sockets
+      - ./app:/home/bitrix/www
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      REDIS_SERVER_SECRET: ${REDIS_SERVER_SECRET}    
+    depends_on:
+      - db
+
+  redis:
+    image: "redis:alpine"
+  
+  push-server-pub:
+    image: ikarpovich/bitrix-push-server
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - LISTEN_HOSTNAME=0.0.0.0
+      - LISTEN_PORT=80
+      - SECURITY_KEY=${REDIS_SERVER_SECRET}
+      - MODE=pub
+
+  push-server-sub:
+    image: ikarpovich/bitrix-push-server
+    links:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - LISTEN_HOSTNAME=0.0.0.0
+      - LISTEN_PORT=80
+      - SECURITY_KEY=${REDIS_SERVER_SECRET}
+      - MODE=sub
